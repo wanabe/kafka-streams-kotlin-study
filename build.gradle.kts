@@ -8,6 +8,9 @@ plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin.
     id("org.jetbrains.kotlin.jvm") version "1.3.72"
 
+
+    id("com.github.johnrengelman.shadow") version "5.0.0"
+
     // Apply the application plugin to add support for building a CLI application.
     application
 }
