@@ -3,6 +3,15 @@
  */
 package com.github.wanabe.kafka_streams_kotlin_study
 
+import java.util.Properties;
+import org.apache.kafka.common.serialization.Serdes
+import org.apache.kafka.streams.KafkaStreams
+import org.apache.kafka.streams.StreamsBuilder
+import org.apache.kafka.streams.kstream.KStream
+import org.apache.kafka.streams.kstream.Consumed
+import org.apache.kafka.streams.kstream.Produced
+import org.apache.kafka.streams.KeyValue
+
 class App {
     val greeting: String
         get() {
@@ -12,4 +21,25 @@ class App {
 
 fun main(args: Array<String>) {
     println(App().greeting)
+
+    val myTopic = "test"
+    val myBrokers = "kafka:9092"
+
+    val streamsBuilder = StreamsBuilder()
+    val myStream1: KStream<String, String> = streamsBuilder
+        .stream<String, String>(myTopic, Consumed.with(Serdes.String(), Serdes.String()))
+    val myStream2: KStream<String, String> = myStream1.map { k, v ->
+        println("key: ${k} value: ${v}")
+        KeyValue("", "")
+    }
+    //myStream2.to(myTopic2, Produced.with(Serdes.String(), Serdes.String()))
+
+    val topology = streamsBuilder.build()
+
+    val props = Properties()
+    props["bootstrap.servers"] = myBrokers
+    props["application.id"] = "kafka-streams-sandbox"
+    val streams = KafkaStreams(topology, props)
+    streams.start()
+    readLine()
 }

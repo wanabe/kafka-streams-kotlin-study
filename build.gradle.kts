@@ -10,7 +10,6 @@ plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin.
     id("org.jetbrains.kotlin.jvm") version "1.3.72"
 
-
     id("com.github.johnrengelman.shadow") version "5.0.0"
 
     // Apply the application plugin to add support for building a CLI application.
@@ -35,6 +34,9 @@ dependencies {
 
     // Use the Kotlin JUnit integration.
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+
+    implementation("org.apache.kafka:kafka-streams:2.4.0")
+    implementation("org.slf4j:slf4j-nop:1.7.30")
 }
 
 application {
