@@ -3,43 +3,56 @@
  */
 package com.github.wanabe.kafka_streams_kotlin_study
 
-import java.util.Properties;
 import org.apache.kafka.common.serialization.Serdes
-import org.apache.kafka.streams.KafkaStreams
-import org.apache.kafka.streams.StreamsBuilder
-import org.apache.kafka.streams.kstream.KStream
-import org.apache.kafka.streams.kstream.Consumed
-import org.apache.kafka.streams.kstream.Produced
-import org.apache.kafka.streams.KeyValue
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import java.sql.Timestamp
 
 class App {
-    val greeting: String
-        get() {
-            return "Hello world."
-        }
+    val brokers = "kafka:9092"
+    companion object {
+        var logger: Logger = LoggerFactory.getLogger(App::class.java)
+    }
 }
 
 fun main(args: Array<String>) {
-    println(App().greeting)
+    val app = App()
+    val rootTopic = "topics"
 
-    val myTopic = "test"
-    val myBrokers = "kafka:9092"
+    Stream<String, String>(app.brokers, rootTopic, Serdes.String(), Serdes.String()) { root ->
+        App.logger.debug("root $root")
 
-    val streamsBuilder = StreamsBuilder()
-    val myStream1: KStream<String, String> = streamsBuilder
-        .stream<String, String>(myTopic, Consumed.with(Serdes.String(), Serdes.String()))
-    val myStream2: KStream<String, String> = myStream1.map { k, v ->
-        println("key: ${k} value: ${v}")
-        KeyValue("", "")
+        root.foreach { targetTopic, perMinStr ->
+            val perMin = perMinStr.toInt()
+            App.logger.debug("begin topic \"${targetTopic}\" limit $perMin/min")
+
+            var count = 0
+            var base: Long = System.currentTimeMillis()
+            Stream(app.brokers, targetTopic, Serdes.String(), Serdes.String()) { inner ->
+                App.logger.debug("begin inner $inner")
+                inner.foreach { k, v ->
+                    val offset = base - System.currentTimeMillis() - count * 60_000L / perMin
+                    if (offset > 0) {
+                        App.logger.debug("sleep $offset ${Timestamp(base)}")
+                        Thread.sleep(offset)
+                    } else if (offset < -60_000L) {
+                        base = System.currentTimeMillis()
+                        count = 0
+                        App.logger.debug("refresh ${Timestamp(base)}")
+                    }
+                    count++
+                    while (count > perMin) {
+                        count -= perMin
+                        base += 60_000L
+                        App.logger.debug("reduce $count/$perMin ${Timestamp(base)}")
+                    }
+                    App.logger.debug("inner $targetTopic -> $k : $v")
+                }
+            }.start() {
+                readLine()
+            }
+        }
+    }.start() {
+        readLine()
     }
-    //myStream2.to(myTopic2, Produced.with(Serdes.String(), Serdes.String()))
-
-    val topology = streamsBuilder.build()
-
-    val props = Properties()
-    props["bootstrap.servers"] = myBrokers
-    props["application.id"] = "kafka-streams-sandbox"
-    val streams = KafkaStreams(topology, props)
-    streams.start()
-    readLine()
 }
