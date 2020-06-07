@@ -1,0 +1,27 @@
+#!/bin/sh
+if [ "$(echo "$1"|cut -c 1-2)" = "-e" ]; then
+    e="$(echo "$1"|cut -c 3-)"
+    if [ "$e" = "" ]; then
+        e="$2"
+        shift
+    fi
+    shift
+    export $e
+fi
+
+if [ "$1" = "" ]; then
+    exec "$0" up --build -d + run --rm app bash + down
+fi
+
+erb -T- docker-compose.yml.erb > docker-compose.yml
+
+args=""
+for a in "$@"; do
+    if [ "$a" = "+" ]; then
+        docker-compose $args
+        args=""
+    else
+        args="$args $a"
+    fi
+done
+docker-compose $args
